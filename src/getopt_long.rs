@@ -261,35 +261,3 @@ Options:",
     opts.iter().for_each(|v| println!("    {}", v));
     println!();
 }
-
-// --
-/*
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn f() -> &[LongOption] {
-        let longopts = &[
-            Opt::new(None, Some('v'), HasArg::NoArgument, "show version.").unwrap(),
-            Opt::new(None, Some('h'), HasArg::NoArgument, "help information.").unwrap(),
-            Opt::new(Some("add".to_owned()), Some('a'), HasArg::RequiredArgument, "add record to table.").unwrap(),
-            Opt::new(Some("remove".to_owned()), Some('r'), HasArg::OptionalArgument, "remove record from table.").unwrap(),
-            Opt::new(Some("modify".to_owned()), Some('m'), HasArg::NoArgument, "modify the record in table.").unwrap(),
-            Opt::new(Some("query".to_owned()), None, HasArg::NoArgument, "query the table.").unwrap(),
-        ];
-        longopts
-    }
-
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-
-    #[test]
-    fn test_args() {
-        assert_eq!(2 + 2, 4);
-    }
-
-
-}
-*/
