@@ -49,7 +49,7 @@
 # endif
 #endif
 
-#undef	ELIDE_CODE
+// #undef	ELIDE_CODE
 #ifndef ELIDE_CODE
 
 /* This needs to come after some library #include
@@ -72,6 +72,7 @@
 #else
 //# include "gettext.h"
 //# define _(msgid) gettext (msgid)
+#include <stdlib.h>
 # define _(msgid) (msgid)
 #endif
 
@@ -269,11 +270,15 @@ exchange (char **argv, struct _getopt_data *d)
 }
 
 /* Initialize the internal data when the first call is made.  */
-
 static const char *
 _getopt_initialize (int argc, char *const *argv, const char *optstring,
 		    struct _getopt_data *d, int posixly_correct)
 {
+	#define UNUSED(x) (void)(x)
+	UNUSED(argc);
+	UNUSED(argv);
+	#undef UNUSED
+
   /* Start processing options with ARGV-element 1 (since ARGV-element 0
      is the program name); the sequence of previously skipped
      non-option ARGV-elements is empty.  */
@@ -1199,7 +1204,7 @@ getopt (int argc, char *const *argv, const char *optstring)
 
 
 int
-getopt_long2(int argc, char *const *argv, const char *options,
+getopt_long(int argc, char *const *argv, const char *options,
 const struct option *long_options, int *opt_index)
 {
 	return _getopt_internal(argc, argv, options, long_options, opt_index, 0, 0);
@@ -1220,7 +1225,7 @@ but does match a short option, it is parsed as a short option
 instead.  */
 
 int
-getopt_long_only (int argc, char *const *argv, const char *options,
+getopt_long_only(int argc, char *const *argv, const char *options,
 const struct option *long_options, int *opt_index)
 {
 	return _getopt_internal (argc, argv, options, long_options, opt_index, 1, 0);
@@ -1251,72 +1256,3 @@ __posix_getopt (int argc, char *const *argv, const char *optstring)
 
 #endif	/* Not ELIDE_CODE.  */
 
-#ifdef TEST
-
-/* Compile with -DTEST to make an executable for use in testing
-   the above definition of `getopt'.  */
-
-int
-main (int argc, char **argv)
-{
-  int c;
-  int digit_optind = 0;
-
-  while (1)
-    {
-      int this_option_optind = optind ? optind : 1;
-
-      c = getopt (argc, argv, "abc:d:0123456789");
-      if (c == -1)
-	break;
-
-      switch (c)
-	{
-	case '0':
-	case '1':
-	case '2':
-	case '3':
-	case '4':
-	case '5':
-	case '6':
-	case '7':
-	case '8':
-	case '9':
-	  if (digit_optind != 0 && digit_optind != this_option_optind)
-	    printf ("digits occur in two different argv-elements.\n");
-	  digit_optind = this_option_optind;
-	  printf ("option %c\n", c);
-	  break;
-
-	case 'a':
-	  printf ("option a\n");
-	  break;
-
-	case 'b':
-	  printf ("option b\n");
-	  break;
-
-	case 'c':
-	  printf ("option c with value '%s'\n", optarg);
-	  break;
-
-	case '?':
-	  break;
-
-	default:
-	  printf ("?? getopt returned character code 0%o ??\n", c);
-	}
-    }
-
-  if (optind < argc)
-    {
-      printf ("non-option ARGV-elements: ");
-      while (optind < argc)
-	printf ("%s ", argv[optind++]);
-      printf ("\n");
-    }
-
-  exit (0);
-}
-
-#endif /* TEST */

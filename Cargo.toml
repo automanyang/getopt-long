@@ -1,14 +1,23 @@
 [package]
-name = "getopt_long"
+name = "getopt-long"
 version = "0.1.0"
-authors = ["xt"]
+authors = ["automan.yang <automanyang@gmail.com>"]
+description = "Reserve the name."
+repository = "https://github.com/automanyang/servant"
+readme = "README.md"
+keywords = ["rpc"]
+categories = ["network-programming"]
+license = "MIT"
 edition = "2018"
 
 [dependencies]
-# libc = "*"
 
 [build-dependencies]
 cc = "1.0"
+
+[dev-dependencies]
+# test-case = "^1.0.0"
+
 
 # [target.x86_64-pc-windows-gnu]
 # linker = "x86_64-w64-mingw32-gcc"

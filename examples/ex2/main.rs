@@ -1,6 +1,5 @@
 // -- main.rs --
 
-#[macro_use]
 use getopt_long::*;
 
 // --
@@ -15,8 +14,8 @@ fn main() -> OptResult<()> {
         Opt::new(Some("query".to_owned()), None, HasArg::NoArgument, "query the table.").unwrap(),
     ];
 
-    usage("ex2", "this is ex2 example.", longopts);
+    usage("ex2", "this is ex2 example.", "1.0.1", longopts);
     let p = getopt_long(longopts)?;
-    println!("{}", p);
+    println!("Arguments:\n{}", p);
     Ok(())
 }

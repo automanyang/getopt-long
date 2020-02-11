@@ -1,83 +1,14 @@
 // -- getopt_long.rs --
 
 use {
-    crate::SpotError,
+    crate::my_glibc,
     std::{
+        collections::{HashMap, HashSet},
         env,
         ffi::{CStr, CString, NulError},
         os::raw::{c_char, c_int},
     },
 };
-
-// --
-
-// extern char *optarg;
-// extern int optind, opterr, optopt;
-//
-// struct option {
-//     const char *name;
-//     int         has_arg;
-//     int        *flag;
-//     int         val;
-// };
-//
-// int getopt(int argc, char * const argv[],
-//     const char *optstring);
-//
-// int getopt_long(int argc, char * const argv[],
-//     const char *optstring,
-//     const struct option *longopts, int *longindex);
-
-mod from_glibc {
-    use std::{
-        ffi::CStr,
-        os::raw::{c_char, c_int},
-    };
-
-    #[allow(unused)]
-    extern "C" {
-        pub(super) static optarg: *mut c_char;
-        pub(super) static optind: c_int;
-        pub(super) static opterr: c_int;
-        pub(super) static optopt: c_int;
-
-        // fn getopt(argc: c_int, argv: *const *mut c_char, optstr: *const c_char) -> c_int;
-
-        pub(super) fn getopt_long(
-            argc: c_int,
-            argv: *const *mut c_char,
-            optstr: *const c_char,
-            longopts: *const LongOption,
-            longindex: *mut c_int,
-        ) -> c_int;
-    }
-
-    #[repr(C)]
-    #[derive(Debug)]
-    pub(super) struct LongOption {
-        pub(super) name: *const c_char,
-        pub(super) has_arg: c_int,
-        pub(super) flag: *mut c_int,
-        pub(super) val: c_int,
-    }
-    impl std::fmt::Display for LongOption {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            write!(
-                f,
-                "name: {:?}, has_arg: {}, flag: {:?}, value: {}",
-                unsafe { CStr::from_ptr(self.name) },
-                self.has_arg,
-                self.flag,
-                self.val
-            )
-        }
-    }
-    impl LongOption {
-        pub(super) const NO_ARGUMENT: c_int = 0;
-        pub(super) const REQUIRED_ARGUMENT: c_int = 1;
-        pub(super) const OPTIONAL_ARGUMENT: c_int = 2;
-    }
-}
 
 // --
 
@@ -153,13 +84,13 @@ impl Opt {
             s
         })
     }
-    fn long_option(&self) -> Option<from_glibc::LongOption> {
-        self.shadow_name.as_ref().map(|v| from_glibc::LongOption {
+    fn long_option(&self) -> Option<my_glibc::LongOption> {
+        self.shadow_name.as_ref().map(|v| my_glibc::LongOption {
             name: v.as_ptr(),
             has_arg: match self.has_arg {
-                HasArg::NoArgument => from_glibc::LongOption::NO_ARGUMENT,
-                HasArg::RequiredArgument => from_glibc::LongOption::REQUIRED_ARGUMENT,
-                HasArg::OptionalArgument => from_glibc::LongOption::OPTIONAL_ARGUMENT,
+                HasArg::NoArgument => my_glibc::LongOption::NO_ARGUMENT,
+                HasArg::RequiredArgument => my_glibc::LongOption::REQUIRED_ARGUMENT,
+                HasArg::OptionalArgument => my_glibc::LongOption::OPTIONAL_ARGUMENT,
             },
             flag: std::ptr::null_mut(),
             val: 0,
@@ -188,33 +119,17 @@ impl std::fmt::Display for Opt {
     }
 }
 
-#[derive(Debug)]
-pub struct Arg {
-    pub name: String,
-    pub value: Option<String>,
+pub struct Arguments {
+    pub args: HashMap<String, String>,
+    pub operands: HashSet<String>,
 }
-impl std::fmt::Display for Arg {
+impl std::fmt::Display for Arguments {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "option: {}, value: {}",
-            self.name,
-            self.value.as_ref().unwrap_or(&String::new())
-        )
-    }
-}
-
-pub struct Parser {
-    pub args: Vec<Arg>,
-    pub operands: Vec<String>,
-}
-impl std::fmt::Display for Parser {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for arg in self.args.iter() {
-            writeln!(f, "{}", arg)?;
+        for a in self.args.iter() {
+            writeln!(f, "{}: {}", a.0, a.1)?;
         }
-        for (i, v) in self.operands.iter().enumerate() {
-            writeln!(f, "operand{}: {}", i, v)?;
+        for o in self.operands.iter() {
+            writeln!(f, "operand: {}", o)?;
         }
         Ok(())
     }
@@ -222,7 +137,7 @@ impl std::fmt::Display for Parser {
 
 // --
 
-pub fn getopt_long(opts: &[Opt]) -> OptResult<Parser> {
+pub fn getopt_long(opts: &[Opt]) -> OptResult<Arguments> {
     let mut optstring = ":".to_owned();
     let mut longopts = Vec::new();
     opts.iter().for_each(|v| {
@@ -234,7 +149,7 @@ pub fn getopt_long(opts: &[Opt]) -> OptResult<Parser> {
         }
     });
     let optstring = CString::new(optstring).map_err(|e| e.to_string())?;
-    longopts.push(from_glibc::LongOption {
+    longopts.push(my_glibc::LongOption {
         name: std::ptr::null(),
         has_arg: 0,
         flag: std::ptr::null_mut(),
@@ -253,10 +168,11 @@ pub fn getopt_long(opts: &[Opt]) -> OptResult<Parser> {
         .map(|arg| arg.into_raw())
         .collect::<Vec<*mut c_char>>();
     let argc = argv.len() as c_int;
-    let mut args = Vec::new();
+
+    let mut args = HashMap::new();
     loop {
         match unsafe {
-            from_glibc::getopt_long(
+            my_glibc::getopt_long(
                 argc,
                 argv.as_ptr(),
                 optstring.as_ptr(),
@@ -267,28 +183,26 @@ pub fn getopt_long(opts: &[Opt]) -> OptResult<Parser> {
             -1 => break,
             0 => {
                 let longopt = &longopts[longindex as usize];
-                args.push(Arg {
-                    name: unsafe { CStr::from_ptr(longopt.name) }
+                args.insert(
+                    unsafe { CStr::from_ptr(longopt.name) }
                         .to_str()
                         .map_err(|e| e.to_string())?
                         .to_string(),
-                    value: if unsafe { from_glibc::optarg.is_null() } {
-                        None
+                    if unsafe { my_glibc::optarg.is_null() } {
+                        String::new()
                     } else {
-                        Some(
-                            unsafe { CStr::from_ptr(from_glibc::optarg) }
-                                .to_str()
-                                .map_err(|e| e.to_string())?
-                                .to_string(),
-                        )
+                        unsafe { CStr::from_ptr(my_glibc::optarg) }
+                            .to_str()
+                            .map_err(|e| e.to_string())?
+                            .to_string()
                     },
-                });
+                );
             }
             i => {
                 let optopt = unsafe {
                     CStr::from_ptr(
                         *argv
-                            .get(from_glibc::optind as usize - 1)
+                            .get(my_glibc::optind as usize - 1)
                             .ok_or(OptError::Other("optopt invalid.".to_owned()))?,
                     )
                 }
@@ -302,48 +216,80 @@ pub fn getopt_long(opts: &[Opt]) -> OptResult<Parser> {
                     Err(OptError::MissingOptionArgument(optopt.clone()))?;
                 }
 
-                args.push(Arg {
-                    name: CStr::from_bytes_with_nul(&[i as u8, 0])
+                args.insert(
+                    CStr::from_bytes_with_nul(&[i as u8, 0])
                         .map_err(|e| e.to_string())?
                         .to_str()
                         .map_err(|e| e.to_string())?
                         .to_string(),
-                    value: if unsafe { from_glibc::optarg.is_null() } {
-                        None
+                    if unsafe { my_glibc::optarg.is_null() } {
+                        String::new()
                     } else {
-                        Some(
-                            unsafe { CStr::from_ptr(from_glibc::optarg) }
-                                .to_str()
-                                .map_err(|e| e.to_string())?
-                                .to_string(),
-                        )
+                        unsafe { CStr::from_ptr(my_glibc::optarg) }
+                            .to_str()
+                            .map_err(|e| e.to_string())?
+                            .to_string()
                     },
-                });
+                );
             }
         }
     }
 
-    let mut operands = Vec::new();
-    for v in argv.split_off(unsafe { from_glibc::optind } as usize) {
-        operands.push(
+    let mut operands = HashSet::new();
+    for v in argv.split_off(unsafe { my_glibc::optind } as usize) {
+        operands.insert(
             unsafe { CStr::from_ptr(v) }
                 .to_str()
                 .map_err(|e| e.to_string())?
                 .to_string(),
         );
     }
-    Ok(Parser { args, operands })
+    Ok(Arguments { args, operands })
 }
 
-pub fn usage(name: &str, desc: &str, opts: &[Opt]) {
+pub fn usage(name: &str, desc: &str, version: &str, opts: &[Opt]) {
     println!(
-        "
+"Description:
+    {}
+Version: 
+    {}
 Usage:
     {} [options [args]] [operands]
-    {}
-",
-        name, desc
+Options:",
+        desc, version, name
     );
-    opts.iter().for_each(|v| println!("{:4}{}", " ", v));
+    opts.iter().for_each(|v| println!("    {}", v));
     println!();
 }
+
+// --
+/*
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn f() -> &[LongOption] {
+        let longopts = &[
+            Opt::new(None, Some('v'), HasArg::NoArgument, "show version.").unwrap(),
+            Opt::new(None, Some('h'), HasArg::NoArgument, "help information.").unwrap(),
+            Opt::new(Some("add".to_owned()), Some('a'), HasArg::RequiredArgument, "add record to table.").unwrap(),
+            Opt::new(Some("remove".to_owned()), Some('r'), HasArg::OptionalArgument, "remove record from table.").unwrap(),
+            Opt::new(Some("modify".to_owned()), Some('m'), HasArg::NoArgument, "modify the record in table.").unwrap(),
+            Opt::new(Some("query".to_owned()), None, HasArg::NoArgument, "query the table.").unwrap(),
+        ];
+        longopts
+    }
+
+    #[test]
+    fn it_works() {
+        assert_eq!(2 + 2, 4);
+    }
+
+    #[test]
+    fn test_args() {
+        assert_eq!(2 + 2, 4);
+    }
+
+
+}
+*/
