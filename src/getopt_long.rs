@@ -101,13 +101,13 @@ impl std::fmt::Display for Opt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{:<5}{:<12}{:<15} {}",
+            "{:<4}{:<20}{:<10} {}",
             self.short_name
                 .map(|v| format!("-{},", v))
                 .unwrap_or(String::new()),
             self.long_name
                 .as_ref()
-                .map(|v| format!("--{},", v))
+                .map(|v| format!("--{}", v))
                 .unwrap_or(String::new()),
             match self.has_arg {
                 HasArg::NoArgument => "",
@@ -119,6 +119,7 @@ impl std::fmt::Display for Opt {
     }
 }
 
+#[derive(Debug)]
 pub struct Arguments {
     pub args: HashMap<String, String>,
     pub operands: HashSet<String>,

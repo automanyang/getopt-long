@@ -5,8 +5,8 @@ authors = ["automan.yang <automanyang@gmail.com>"]
 description = "Reserve the name."
 repository = "https://github.com/automanyang/servant"
 readme = "README.md"
-keywords = ["rpc"]
-categories = ["network-programming"]
+keywords = ["getopt"]
+categories = ["utilities"]
 license = "MIT"
 edition = "2018"
 
