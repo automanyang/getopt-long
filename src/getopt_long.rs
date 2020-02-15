@@ -3,7 +3,7 @@
 use {
     crate::my_glibc,
     std::{
-        collections::{HashMap, HashSet},
+        collections::HashMap,
         env,
         ffi::{CStr, CString, NulError},
         os::raw::{c_char, c_int},
@@ -122,7 +122,7 @@ impl std::fmt::Display for Opt {
 #[derive(Debug)]
 pub struct Arguments {
     pub args: HashMap<String, String>,
-    pub operands: HashSet<String>,
+    pub operands: Vec<String>,
 }
 impl std::fmt::Display for Arguments {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -236,9 +236,9 @@ pub fn getopt_long(opts: &[Opt]) -> OptResult<Arguments> {
         }
     }
 
-    let mut operands = HashSet::new();
+    let mut operands = Vec::new();
     for v in argv.split_off(unsafe { my_glibc::optind } as usize) {
-        operands.insert(
+        operands.push(
             unsafe { CStr::from_ptr(v) }
                 .to_str()
                 .map_err(|e| e.to_string())?
@@ -250,7 +250,7 @@ pub fn getopt_long(opts: &[Opt]) -> OptResult<Arguments> {
 
 pub fn usage(name: &str, desc: &str, version: &str, opts: &[Opt]) {
     println!(
-"Description:
+        "Description:
     {}
 Version: 
     {}
