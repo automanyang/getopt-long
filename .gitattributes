@@ -1,1 +1,1 @@
-*.rs linguist-language=rust
+*.c linguist-language=rust
