@@ -2,7 +2,7 @@
 name = "getopt-long"
 version = "0.1.0"
 authors = ["automan.yang <automanyang@gmail.com>"]
-description = "Reserve the name."
+description = "Just as getopt_long in glibc. Dependence is nothing."
 repository = "https://github.com/automanyang/servant"
 readme = "README.md"
 keywords = ["getopt"]
