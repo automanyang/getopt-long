@@ -97,10 +97,15 @@ impl std::fmt::Display for Opt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{:<4}{:<16}{:<10} {}",
+            "{:<2}{:2}{:<16}{:<10} {}",
             self.short_name
-                .map(|v| format!("-{},", v))
+                .map(|v| format!("-{}", v))
                 .unwrap_or(String::new()),
+            if self.short_name.is_none() || self.long_name.is_none() {
+                ""
+            } else {
+                ", "
+            },
             self.long_name
                 .as_ref()
                 .map(|v| format!("--{}", v.to_str().unwrap_or("")))
@@ -160,10 +165,16 @@ pub fn getopt_long(opts: &[Opt]) -> OptResult<Arguments> {
         argv.push(CString::new(v)?);
     }
     // convert the strings to raw pointers
-    let mut argv = argv
+    let argv = argv
         .into_iter()
         .map(|arg| arg.into_raw())
         .collect::<Vec<*mut c_char>>();
+    let mut argv = recover_guard::RecoverGuard::new(argv, |a| {
+        // 回收传入c函数中的资源
+        a.into_iter().for_each(|v| unsafe {
+            CString::from_raw(v);
+        })
+    });
     let argc = argv.len() as c_int;
 
     let mut args = HashMap::new();
@@ -231,11 +242,6 @@ pub fn getopt_long(opts: &[Opt]) -> OptResult<Arguments> {
         operands.push(unsafe { CStr::from_ptr(v) }.to_str()?.to_string());
     }
 
-    // 回收传入c函数中的资源
-    argv.into_iter().for_each(|v| unsafe {
-        CString::from_raw(v);
-    });
-
     Ok(Arguments { args, operands })
 }
 
@@ -252,4 +258,51 @@ Options:",
     );
     opts.iter().for_each(|v| println!("    {}", v));
     println!();
+}
+
+// --
+
+mod recover_guard {
+    use std::{
+        boxed::Box,
+        ops::{Deref, DerefMut, Drop, FnMut},
+    };
+
+    pub struct RecoverGuard<T, F: FnMut(T)> {
+        data: Option<T>,
+        func: Box<F>,
+    }
+
+    impl<T: Sized, F: FnMut(T)> RecoverGuard<T, F> {
+        pub fn new(data: T, func: F) -> RecoverGuard<T, F> {
+            RecoverGuard {
+                data: Some(data),
+                func: Box::new(func),
+            }
+        }
+    }
+
+    impl<T, F: FnMut(T)> Deref for RecoverGuard<T, F> {
+        type Target = T;
+
+        fn deref(&self) -> &T {
+            &self.data.as_ref().expect("the data should be here")
+        }
+    }
+
+    impl<T, F: FnMut(T)> DerefMut for RecoverGuard<T, F> {
+        fn deref_mut(&mut self) -> &mut T {
+            self.data.as_mut().expect("the data should be here")
+        }
+    }
+
+    impl<T, F: FnMut(T)> Drop for RecoverGuard<T, F> {
+        fn drop(&mut self) {
+            let mut data: Option<T> = None;
+            std::mem::swap(&mut data, &mut self.data);
+
+            let ref mut f = self.func;
+            f(data.expect("the data is here until the drop"));
+        }
+    }
 }
