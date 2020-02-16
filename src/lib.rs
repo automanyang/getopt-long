@@ -157,18 +157,22 @@
 //! 
 //! show as below:
 //! ```sh 
-//! hello [options [args]] [operands]                                          
-//! Options:                                                                   
-//!     -h, --help                         help and version information        
-//!     -c, --config                       config file name with full path     
-//!     -l, --list                         list all dictionaries               
-//!     -s, --shell                        run as a Lua shell.                 
-//!     -r, --run                =Arg      run a Lua script file.              
-//!         --rows                         query rows count in a dictionary    
-//!         --row-id             =Arg      query a row information in a diction
-//! ary                                                                        
+//! Description:
+//!     query a word information from some remote dictionaries.
+//! Version:
+//!     0.1.0
+//! Usage:
+//!     rdict [options [args]] [operands]
+//! Options:
+//!     -h, --help                         help and version information
+//!     -c, --config                       config file name with full path
+//!     -l, --list                         list all dictionaries
+//!     -s, --shell                        run as a Lua shell.
+//!     -r, --run                =Arg      run a Lua script file.
+//!         --rows                         query rows count in a dictionary
+//!         --row-id             =Arg      query a row information in a dictionary
 //!     -d, --dictionary         =Arg      dictionary name used to query
-//!```
+//! ```
 //! 
 //! Just so. It is very simple and useful.
 
