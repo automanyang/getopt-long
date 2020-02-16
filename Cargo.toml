@@ -6,7 +6,7 @@ description = "Just as getopt_long in glibc. Dependence is nothing."
 repository = "https://github.com/automanyang/servant"
 readme = "README.md"
 keywords = ["getopt"]
-categories = ["utilities"]
+categories = ["command-line-utilities"]
 license = "MIT"
 edition = "2018"
 
