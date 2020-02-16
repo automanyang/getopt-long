@@ -156,7 +156,7 @@
 //! ```
 //! 
 //! show as below:
-//!```sh 
+//! ```sh 
 //! hello [options [args]] [operands]                                          
 //! Options:                                                                   
 //!     -h, --help                         help and version information        
