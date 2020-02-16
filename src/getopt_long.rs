@@ -16,24 +16,26 @@ use {
 pub enum OptError {
     InvalidOption(String),
     MissingOptionArgument(String),
-    Other(String),
+    InvalidOptind(i32),
 }
 
 impl std::error::Error for OptError {}
 
-impl<T: Into<String>> std::convert::From<T> for OptError {
-    fn from(e: T) -> Self {
-        Self::Other(e.into())
-    }
-}
-
 impl std::fmt::Display for OptError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "OptError({:?})", self)
+        write!(
+            f,
+            "{}",
+            match self {
+                OptError::InvalidOption(s) => format!("invalid option: {}", s),
+                OptError::MissingOptionArgument(s) => format!("missing option argument: {}", s),
+                OptError::InvalidOptind(i) => format!("invalid optind: {}", i),
+            }
+        )
     }
 }
 
-pub type OptResult<T> = Result<T, OptError>;
+pub type OptResult<T> = Result<T, Box<dyn std::error::Error>>;
 
 // --
 
@@ -45,8 +47,7 @@ pub enum HasArg {
 }
 
 pub struct Opt {
-    long_name: Option<String>,
-    shadow_name: Option<CString>,
+    long_name: Option<CString>,
     short_name: Option<char>,
     has_arg: HasArg,
     desc: String,
@@ -58,13 +59,8 @@ impl Opt {
         has_arg: HasArg,
         desc: &str,
     ) -> Result<Self, NulError> {
-        let shadow = long_name
-            .as_ref()
-            .map(|v| CString::new(v.clone()))
-            .transpose()?;
         Ok(Self {
-            long_name,
-            shadow_name: shadow,
+            long_name: long_name.map(|v| CString::new(v)).transpose()?,
             short_name,
             has_arg,
             desc: desc.to_owned(),
@@ -85,7 +81,7 @@ impl Opt {
         })
     }
     fn long_option(&self) -> Option<my_glibc::LongOption> {
-        self.shadow_name.as_ref().map(|v| my_glibc::LongOption {
+        self.long_name.as_ref().map(|v| my_glibc::LongOption {
             name: v.as_ptr(),
             has_arg: match self.has_arg {
                 HasArg::NoArgument => my_glibc::LongOption::NO_ARGUMENT,
@@ -101,13 +97,13 @@ impl std::fmt::Display for Opt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{:<4}{:<20}{:<10} {}",
+            "{:<4}{:<16}{:<10} {}",
             self.short_name
                 .map(|v| format!("-{},", v))
                 .unwrap_or(String::new()),
             self.long_name
                 .as_ref()
-                .map(|v| format!("--{}", v))
+                .map(|v| format!("--{}", v.to_str().unwrap_or("")))
                 .unwrap_or(String::new()),
             match self.has_arg {
                 HasArg::NoArgument => "",
@@ -149,7 +145,7 @@ pub fn getopt_long(opts: &[Opt]) -> OptResult<Arguments> {
             longopts.push(lo);
         }
     });
-    let optstring = CString::new(optstring).map_err(|e| e.to_string())?;
+    let optstring = CString::new(optstring)?;
     longopts.push(my_glibc::LongOption {
         name: std::ptr::null(),
         has_arg: 0,
@@ -161,7 +157,7 @@ pub fn getopt_long(opts: &[Opt]) -> OptResult<Arguments> {
     // create a vector of zero terminated strings
     let mut argv = Vec::new();
     for v in env::args() {
-        argv.push(CString::new(v).map_err(|e| OptError::Other(e.to_string()))?);
+        argv.push(CString::new(v)?);
     }
     // convert the strings to raw pointers
     let mut argv = argv
@@ -186,15 +182,13 @@ pub fn getopt_long(opts: &[Opt]) -> OptResult<Arguments> {
                 let longopt = &longopts[longindex as usize];
                 args.insert(
                     unsafe { CStr::from_ptr(longopt.name) }
-                        .to_str()
-                        .map_err(|e| e.to_string())?
+                        .to_str()?
                         .to_string(),
                     if unsafe { my_glibc::optarg.is_null() } {
                         String::new()
                     } else {
                         unsafe { CStr::from_ptr(my_glibc::optarg) }
-                            .to_str()
-                            .map_err(|e| e.to_string())?
+                            .to_str()?
                             .to_string()
                     },
                 );
@@ -204,11 +198,10 @@ pub fn getopt_long(opts: &[Opt]) -> OptResult<Arguments> {
                     CStr::from_ptr(
                         *argv
                             .get(my_glibc::optind as usize - 1)
-                            .ok_or(OptError::Other("optopt invalid.".to_owned()))?,
+                            .ok_or(OptError::InvalidOptind(my_glibc::optind))?,
                     )
                 }
-                .to_str()
-                .map_err(|e| e.to_string())?
+                .to_str()?
                 .to_string();
                 if i == b'?' as c_int {
                     Err(OptError::InvalidOption(optopt.clone()))?;
@@ -218,17 +211,14 @@ pub fn getopt_long(opts: &[Opt]) -> OptResult<Arguments> {
                 }
 
                 args.insert(
-                    CStr::from_bytes_with_nul(&[i as u8, 0])
-                        .map_err(|e| e.to_string())?
-                        .to_str()
-                        .map_err(|e| e.to_string())?
+                    CStr::from_bytes_with_nul(&[i as u8, 0])?
+                        .to_str()?
                         .to_string(),
                     if unsafe { my_glibc::optarg.is_null() } {
                         String::new()
                     } else {
                         unsafe { CStr::from_ptr(my_glibc::optarg) }
-                            .to_str()
-                            .map_err(|e| e.to_string())?
+                            .to_str()?
                             .to_string()
                     },
                 );
@@ -238,13 +228,14 @@ pub fn getopt_long(opts: &[Opt]) -> OptResult<Arguments> {
 
     let mut operands = Vec::new();
     for v in argv.split_off(unsafe { my_glibc::optind } as usize) {
-        operands.push(
-            unsafe { CStr::from_ptr(v) }
-                .to_str()
-                .map_err(|e| e.to_string())?
-                .to_string(),
-        );
+        operands.push(unsafe { CStr::from_ptr(v) }.to_str()?.to_string());
     }
+
+    // 回收传入c函数中的资源
+    argv.into_iter().for_each(|v| unsafe {
+        CString::from_raw(v);
+    });
+
     Ok(Arguments { args, operands })
 }
 

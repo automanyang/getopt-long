@@ -15,7 +15,10 @@ fn main() -> OptResult<()> {
     ];
 
     usage("ex2", "this is ex2 example.", "1.0.1", longopts);
-    let p = getopt_long(longopts)?;
-    println!("Arguments:\n{}", p);
+    match getopt_long(longopts) {
+        Ok(p) => println!("Arguments:\n{}", p),
+        Err(e) => println!("{}", e),
+    }
+    
     Ok(())
 }
