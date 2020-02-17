@@ -14,7 +14,7 @@ fn main() -> OptResult<()> {
         Opt::new(None, Some('q'), HasArg::NoArgument, "query the table.").unwrap(),
     ];
 
-    usage("ex1", "this is ex1 example.", "0.8.9", longopts);
+    usage("ex1", "this is ex1 example.", longopts);
     let p = getopt_long(longopts)?;
     println!("{}", p);
     Ok(())

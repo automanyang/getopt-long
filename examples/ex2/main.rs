@@ -14,7 +14,7 @@ fn main() -> OptResult<()> {
         Opt::new(Some("query".to_owned()), None, HasArg::NoArgument, "query the table.").unwrap(),
     ];
 
-    usage("ex2", "this is ex2 example.", "1.0.1", longopts);
+    usage("ex2", "this is ex2 example.", longopts);
     match getopt_long(longopts) {
         Ok(p) => println!("Arguments:\n{}", p),
         Err(e) => println!("{}", e),
