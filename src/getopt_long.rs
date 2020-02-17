@@ -245,8 +245,7 @@ pub fn getopt_long(opts: &[Opt]) -> OptResult<Arguments> {
     Ok(Arguments { args, operands })
 }
 
-pub fn usage(name: &str, desc: &str, opts: &[Opt]) {
-    let version = env!("CARGO_PKG_VERSION");
+pub fn usage(name: &str, desc: &str, version: &str, opts: &[Opt]) {
     println!(
         "Description:
     {}
