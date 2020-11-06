@@ -573,7 +573,11 @@ _getopt_internal_r (int argc, char *const *argv, const char *optstring,
 		     || pfound->val != p->val)
 	      {
 		/* Second or later nonexact match found.  */
+#if defined(_MSC_VER)
+		struct option_list *newp = _alloca(sizeof (*newp));
+#else
 		struct option_list *newp = alloca(sizeof (*newp));
+#endif
 		// struct option_list *newp = _alloca(sizeof (*newp));
 		newp->p = p;
 		newp->next = ambig_list;

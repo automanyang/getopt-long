@@ -9,27 +9,8 @@ mod my_glibc {
 
     #[allow(unused)]
     extern "C" {
-        // extern char *optarg;
-        // extern int optind, opterr, optopt;
-        //
-        // struct option {
-        //     const char *name;
-        //     int         has_arg;
-        //     int        *flag;
-        //     int         val;
-        // };
-        //
-        // int getopt(int argc, char * const argv[],
-        //     const char *optstring);
-        //
-        // int getopt_long(int argc, char * const argv[],
-        //     const char *optstring,
-        //     const struct option *longopts, int *longindex);
-
         pub(crate) static optarg: *mut c_char;
         pub(crate) static optind: c_int;
-        // pub(crate) static opterr: c_int;
-        // pub(crate) static optopt: c_int;
 
         pub(crate) fn getopt_long(
             argc: c_int,

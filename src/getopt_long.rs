@@ -247,13 +247,13 @@ pub fn getopt_long(opts: &[Opt]) -> OptResult<Arguments> {
 
 pub fn usage(name: &str, desc: &str, version: &str, opts: &[Opt]) {
     println!(
-        "Description:
+        r#"Description:
     {}
-Version: 
+Version:
     {}
 Usage:
     {} [options [args]] [operands]
-Options:",
+Options:"#,
         desc, version, name
     );
     opts.iter().for_each(|v| println!("    {}", v));
@@ -268,7 +268,7 @@ mod recover_guard {
         ops::{Deref, DerefMut, Drop, FnMut},
     };
 
-    pub struct RecoverGuard<T, F: FnMut(T)> {
+    pub(crate) struct RecoverGuard<T, F: FnMut(T)> {
         data: Option<T>,
         func: Box<F>,
     }
@@ -298,9 +298,9 @@ mod recover_guard {
 
     impl<T, F: FnMut(T)> Drop for RecoverGuard<T, F> {
         fn drop(&mut self) {
-            let mut data: Option<T> = None;
-            std::mem::swap(&mut data, &mut self.data);
-
+            // let mut data: Option<T> = None;
+            // std::mem::swap(&mut data, &mut self.data);
+            let data = self.data.take();
             let ref mut f = self.func;
             f(data.expect("the data is here until the drop"));
         }
