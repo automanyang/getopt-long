@@ -155,7 +155,7 @@ In a shell, key:
 ```
 
 show as below:
-``sh 
+```sh 
 hello [options [args]] [operands]                                          
 Options:                                                                   
     -h, --help                         help and version information        
@@ -167,6 +167,6 @@ Options:
         --row-id             =Arg      query a row information in a diction
 ary                                                                        
     -d, --dictionary         =Arg      dictionary name used to query
-``
+```
 
 Just so. It is very simple and useful.
